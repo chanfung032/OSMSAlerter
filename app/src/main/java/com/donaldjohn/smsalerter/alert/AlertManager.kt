@@ -1,8 +1,5 @@
 package com.donaldjohn.smsalerter.alert
 import android.content.Context
-import android.hardware.Camera
-import android.hardware.camera2.CameraCharacteristics
-import android.hardware.camera2.CameraManager
 import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.media.RingtoneManager
@@ -12,25 +9,24 @@ import android.os.Looper
 import android.os.VibrationEffect
 import android.os.Vibrator
 import com.donaldjohn.smsalerter.R
+import android.content.ComponentName;
+import android.content.pm.PackageManager;
 
 class AlertManager(private val context: Context) {
     private var mediaPlayer: MediaPlayer? = null
     private var vibrator: Vibrator? = null
-    private var camera: Camera? = null
     private var isAlerting = false
     private val handler = Handler(Looper.getMainLooper())
 
     fun startAlert() {
         if (isAlerting) return
         isAlerting = true
-        
+
         // 播放警报声音
         playSound()
         // 开始震动
         startVibration()
-        // 开始闪光
-        startFlashing()
-        
+
 
 //        // 10秒后停止
 //        handler.postDelayed({
@@ -100,37 +96,11 @@ class AlertManager(private val context: Context) {
         }
     }
 
-    private fun startFlashing() {
-        try {
-            val cameraManager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
-            cameraManager.cameraIdList.firstOrNull { 
-                val characteristics = cameraManager.getCameraCharacteristics(it)
-                characteristics.get(CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_BACK
-            }?.let { cameraId ->
-                var isOn = false
-                val handler = Handler(Looper.getMainLooper())
-                
-                val runnable = object : Runnable {
-                    override fun run() {
-                        if (isAlerting) try {
-                            cameraManager.setTorchMode(cameraId, isOn)
-                            isOn = !isOn
-                            handler.postDelayed(this, 500)
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                        }
-                    }
-                }
-                handler.post(runnable)
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-    }
-
     fun stopAlert() {
+        if (!isAlerting) return
         isAlerting = false
-        
+        android.util.Log.i("AlertManager", "stop alert")
+
         // 停止声音
         mediaPlayer?.apply {
             if (isPlaying) {
@@ -143,25 +113,7 @@ class AlertManager(private val context: Context) {
         // 确保正确停止震动
         vibrator?.cancel()
         vibrator = null
-        
-        // 停止闪光
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            try {
-                val cameraManager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
-                cameraManager.getCameraIdList().forEach { cameraId ->
-                    cameraManager.setTorchMode(cameraId, false)
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        } else {
-            camera?.apply {
-                stopPreview()
-                release()
-            }
-            camera = null
-        }
-        
+
         // 移除所有待执行的延迟任务
         handler.removeCallbacksAndMessages(null)
     }

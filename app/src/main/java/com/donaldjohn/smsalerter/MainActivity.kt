@@ -38,26 +38,31 @@ import android.widget.ScrollView
 import android.graphics.Color
 import android.graphics.Typeface
 import kotlinx.coroutines.delay
+import java.util.concurrent.atomic.AtomicReference
 
 class MainActivity : AppCompatActivity() {
     private lateinit var contactManager: ContactManager
     private lateinit var contactsAdapter: ContactsAdapter
-    private var alertManager: AlertManager? = null
     private lateinit var tvLog: TextView
     
     companion object {
         private const val PERMISSIONS_REQUEST_CODE = 100
         private const val PICK_CONTACT_REQUEST = 101
-        
+
+        private val staticAlertManager = AtomicReference<AlertManager?>(null)
+
         @Volatile
-        private var staticAlertManager: AlertManager? = null
         private var staticTvLog: TextView? = null
         
         private const val MAX_LOG_LINES = 500  // 添加最大日志行数常量
         
-        fun getAlertManager(): AlertManager? = staticAlertManager
-        fun setAlertManager(manager: AlertManager?) {
-            staticAlertManager = manager
+        fun getAlertManager(): AlertManager? = staticAlertManager.get()
+        fun setAlertManager(manager: AlertManager?): AlertManager? {
+            val old = staticAlertManager.getAndSet(manager)
+            if (old != null) {
+                old.stopAlert()
+            }
+            return manager
         }
         
         fun setLogTextView(textView: TextView) {
@@ -112,7 +117,6 @@ class MainActivity : AppCompatActivity() {
             Manifest.permission.RECEIVE_SMS,
             Manifest.permission.READ_SMS,
             Manifest.permission.VIBRATE,
-            Manifest.permission.CAMERA,
             Manifest.permission.MODIFY_AUDIO_SETTINGS
         ).toMutableList()
 
@@ -209,16 +213,12 @@ private fun initializeApp() {
         }
         
         btnStartTest.setOnClickListener {
-            alertManager = AlertManager(this)
-            setAlertManager(alertManager)
-            alertManager?.startAlert()
+            setAlertManager(AlertManager(this))?.startAlert()
             appendLog("开始测试警报")
         }
         
         btnStopTest.setOnClickListener {
-            alertManager?.stopAlert()
             getAlertManager()?.stopAlert()
-            alertManager = null
             setAlertManager(null)
             appendLog("停止警报")
         }
