@@ -112,6 +112,15 @@ class MainActivity : AppCompatActivity() {
         // 其他初始化操作移到权限获取成功后
     }
 
+    override fun onStart() {
+        super.onStart()
+        getAlertManager()?.let { alertManager ->
+            alertManager.stopAlert()
+            //setAlertManager(null)
+            appendLogStatic("停止警报喵")
+        }
+    }
+
     private fun checkAndRequestPermissions() {
         val permissions = arrayOf(
             Manifest.permission.RECEIVE_SMS,
